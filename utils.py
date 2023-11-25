@@ -1,9 +1,6 @@
-def parse_mileage_engine_power(df: pd.DataFrame) -> pd.dataFrame:
-    regexp = r'([0-9]*[.,]?[0-9]+)'
-    df['mileage'] = df['mileage'].str.extract(regexp).apply(pd.to_numeric)
-    df['engine'] = df['engine'].str.extract(regexp).apply(pd.to_numeric)
-    df['max_power'] = df['engine'].str.extract(regexp).apply(pd.to_numeric)
-    return df
+import pandas as pd
+import re
+import numpy as np
 
 def column_pars(col):
 
@@ -109,3 +106,25 @@ def column_pars(col):
               max_torque_rpm.append(float(info[1]))
       return torque, max_torque_rpm
 
+def process_data(df: pd.DataFrame):
+    regexp = r'([0-9]*[.,]?[0-9]+)'
+
+    df['mileage'] = df['mileage'].str.extract(regexp).apply(pd.to_numeric)
+    df['engine'] = df['engine'].str.extract(regexp).apply(pd.to_numeric)
+    df['max_power'] = df['max_power'].str.extract(regexp).apply(pd.to_numeric)
+
+    torque_train, max_rpm_train = column_pars(df.torque)
+    df['torque'] = pd.DataFrame(torque_train)
+    df['max_torque_rpm'] = pd.DataFrame(max_rpm_train)
+    df = df.fillna(df.median(numeric_only=True))
+    df.seats = df.seats.astype(str)
+    df['power_per_litr'] = round(df.max_power / (df.engine / 1000), 2)
+    df['year'] = df.year ** 2
+    df['model'] = df.name.apply(lambda x: x.split()[1])
+    df['name'] = df.name.apply(lambda x: x.split()[0])
+    df['km_driven_per_year'] = round(df.km_driven / (2023 - df.year ** 0.5), 2)
+    df.km_driven = np.log(df.km_driven)
+    df.torque = np.log(df.torque)
+    df.max_torque_rpm = np.log(df.max_torque_rpm)
+
+    return df
